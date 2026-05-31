@@ -1,0 +1,76 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: xwz
+      POSTGRES_PASSWORD: xwz_secret
+      POSTGRES_DB: xwz_parking
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - xwz-net
+
+  api-gateway:
+    image: ghcr.io/amani-patrick/xwz-parking-api-gateway:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - PARKING_SERVICE_URL=http://parking-service:5002
+      - ENTRY_SERVICE_URL=http://entry-service:5003
+      - REPORT_SERVICE_URL=http://report-service:5004
+    depends_on:
+      - auth-service
+      - parking-service
+      - entry-service
+      - report-service
+    networks:
+      - xwz-net
+
+  auth-service:
+    image: ghcr.io/amani-patrick/xwz-parking-auth-service:latest
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - DB_URL=postgresql://xwz:xwz_secret@postgres:5432/xwz_parking
+      - JWT_SECRET=xwz_jwt_super_secret_2024
+      - JWT_EXPIRES_IN=24h
+    depends_on:
+      - postgres
+    networks:
+      - xwz-net
+
+  entry-service:
+    image: ghcr.io/amani-patrick/xwz-parking-entry-service:latest
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - DB_URL=postgresql://xwz:xwz_secret@postgres:5432/xwz_parking
+      - JWT_SECRET=xwz_jwt_super_secret_2024
+    depends_on:
+      - postgres
+    networks:
+      - xwz-net
+
+  frontend:
+    image: ghcr.io/amani-patrick/xwz-parking-frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+    depends_on:
+      - api-gateway
+    networks:
+      - xwz-net
+
+volumes:
+  pgdata:
+
+networks:
+  project-net:
+    driver: bridge
