@@ -20,13 +20,12 @@ export default function LoginPage() {
     try {
       const res = await authAPI.login(form);
       login(res.data.data.user, res.data.data.token);
-      toast.success('Welcome back!');
+      toast.success(`Welcome back, ${res.data.data.user.firstName}!`);
       navigate('/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || 'Login failed';
       const errs = err.response?.data?.errors || [];
       setErrors(errs.length ? errs : [msg]);
-      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -43,7 +42,7 @@ export default function LoginPage() {
 
         {errors.length > 0 && (
           <div className="alert alert-error">
-            <ul style={{ paddingLeft: 16 }}>
+            <ul style={{ paddingLeft: 16, margin: 0 }}>
               {errors.map((e, i) => <li key={i}>{e}</li>)}
             </ul>
           </div>
@@ -59,10 +58,21 @@ export default function LoginPage() {
               value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
               required
+              autoFocus
+              autoComplete="email"
             />
           </div>
+
           <div className="form-group">
-            <label className="form-label">Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label className="form-label" style={{ margin: 0 }}>Password</label>
+              <Link
+                to="/forgot-password"
+                style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPass ? 'text' : 'password'}
@@ -72,6 +82,7 @@ export default function LoginPage() {
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 required
                 style={{ paddingRight: 44 }}
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -82,14 +93,28 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-          <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
-            {loading ? <><span className="spinner" style={{ width: 16, height: 16 }} /> Signing in…</> : 'Sign In'}
+
+          <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ marginTop: 8 }}>
+            {loading
+              ? <><span className="spinner" style={{ width: 16, height: 16 }} /> Signing in…</>
+              : 'Sign In'}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text-muted)' }}>
-          Default: admin@femcs.rw / Admin@1234
-        </p>
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            Don't have an account?{' '}
+            <Link to="/register" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+              Create account
+            </Link>
+          </p>
+        </div>
+
+        <div style={{ marginTop: 20, padding: '12px 16px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>
+            Default admin: <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>admin@femcs.rw</span> / <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>Admin@1234</span>
+          </p>
+        </div>
       </div>
     </div>
   );

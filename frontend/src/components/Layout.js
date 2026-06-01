@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { notificationAPI } from '../services/api';
+import { notificationAPI, authAPI } from '../services/api';
 import {
   LayoutDashboard, Users, Flame, ClipboardCheck, Wrench,
-  Bell, BarChart3, LogOut, ShieldAlert, Menu, X, FileText
+  Bell, BarChart3, LogOut, ShieldAlert, Menu, X, FileText, KeyRound
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -30,6 +30,10 @@ export default function Layout() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [changePwModal, setChangePwModal] = useState(false);
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwErrors, setPwErrors] = useState([]);
+  const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
@@ -68,6 +72,27 @@ export default function Layout() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwErrors([]);
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwErrors(['New passwords do not match']);
+      return;
+    }
+    setPwLoading(true);
+    try {
+      await authAPI.changePassword({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
+      import('react-hot-toast').then(({ default: toast }) => toast.success('Password changed successfully'));
+      setChangePwModal(false);
+      setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      const errs = err.response?.data?.errors || [err.response?.data?.message || 'Failed to change password'];
+      setPwErrors(errs);
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   const pageTitle = [...navItems, ...adminItems].find(i => location.pathname.startsWith(i.path))?.label || 'FEMCS';
@@ -128,6 +153,9 @@ export default function Layout() {
               <strong>{user?.firstName} {user?.lastName}</strong>
               <small>{user?.role?.replace('_', ' ')}</small>
             </div>
+            <button className="logout-btn" title="Change password" onClick={() => setChangePwModal(true)} style={{ marginRight: 2 }}>
+              <KeyRound size={14} />
+            </button>
             <button className="logout-btn" onClick={handleLogout} title="Logout">
               <LogOut size={15} />
             </button>
@@ -199,6 +227,53 @@ export default function Layout() {
           <Outlet />
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {changePwModal && (
+        <div className="modal-overlay" onClick={() => setChangePwModal(false)}>
+          <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3><KeyRound size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />Change Password</h3>
+              <button className="btn-icon" onClick={() => setChangePwModal(false)}><X size={16} /></button>
+            </div>
+            <form onSubmit={handleChangePassword}>
+              <div className="modal-body">
+                {pwErrors.length > 0 && (
+                  <div className="alert alert-error">
+                    {pwErrors.map((e, i) => <div key={i}>{e}</div>)}
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">Current Password *</label>
+                  <input type="password" className="form-control" value={pwForm.currentPassword}
+                    onChange={e => setPwForm({ ...pwForm, currentPassword: e.target.value })} required autoFocus />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">New Password *</label>
+                  <input type="password" className="form-control" value={pwForm.newPassword}
+                    onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })} required
+                    placeholder="Min. 8 chars, upper, lower, number, special" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm New Password *</label>
+                  <input type="password" className="form-control" value={pwForm.confirmPassword}
+                    onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required
+                    style={{ borderColor: pwForm.confirmPassword ? pwForm.newPassword === pwForm.confirmPassword ? 'var(--success)' : 'var(--danger)' : undefined }} />
+                  {pwForm.confirmPassword && pwForm.newPassword !== pwForm.confirmPassword && (
+                    <div className="form-error">Passwords do not match</div>
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setChangePwModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={pwLoading || pwForm.newPassword !== pwForm.confirmPassword}>
+                  {pwLoading ? <><span className="spinner" style={{ width: 14, height: 14 }} /> Saving…</> : 'Change Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

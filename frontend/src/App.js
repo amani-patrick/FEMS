@@ -4,6 +4,9 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import CustomersPage from './pages/CustomersPage';
 import ExtinguishersPage from './pages/ExtinguishersPage';
@@ -33,18 +36,25 @@ const PublicRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+      {/* Public auth routes */}
+      <Route path="/login"          element={<PublicRoute><LoginPage /></PublicRoute>} />
+      <Route path="/register"       element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+      <Route path="/reset-password"  element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+
+      {/* Protected app routes */}
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="customers" element={<CustomersPage />} />
+        <Route path="dashboard"     element={<DashboardPage />} />
+        <Route path="customers"     element={<CustomersPage />} />
         <Route path="extinguishers" element={<ExtinguishersPage />} />
-        <Route path="inspections" element={<InspectionsPage />} />
-        <Route path="maintenance" element={<MaintenancePage />} />
-        <Route path="reports" element={<ProtectedRoute adminOnly><ReportsPage /></ProtectedRoute>} />
-        <Route path="escalations" element={<ProtectedRoute adminOnly><EscalationsPage /></ProtectedRoute>} />
-        <Route path="users" element={<ProtectedRoute adminOnly><UsersPage /></ProtectedRoute>} />
+        <Route path="inspections"   element={<InspectionsPage />} />
+        <Route path="maintenance"   element={<MaintenancePage />} />
+        <Route path="reports"       element={<ProtectedRoute adminOnly><ReportsPage /></ProtectedRoute>} />
+        <Route path="escalations"   element={<ProtectedRoute adminOnly><EscalationsPage /></ProtectedRoute>} />
+        <Route path="users"         element={<ProtectedRoute adminOnly><UsersPage /></ProtectedRoute>} />
       </Route>
+
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

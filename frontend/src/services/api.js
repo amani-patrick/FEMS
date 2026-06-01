@@ -36,6 +36,9 @@ export const authAPI = {
   getUsers: (params) => api.get('/auth/users', { params }),
   toggleUser: (id) => api.patch(`/auth/users/${id}/toggle`),
   updateRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
+  changePassword: (data) => api.post('/auth/change-password', data),
 };
 
 export const customerAPI = {
