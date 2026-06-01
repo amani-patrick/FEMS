@@ -1,7 +1,7 @@
 {
-  "name": "xwz-entry-service",
+  "name": "femcs-customer-service",
   "version": "1.0.0",
-  "description": "XWZ Parking - Car Entry/Exit Management Service",
+  "description": "FEMCS - Customer Management Service",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

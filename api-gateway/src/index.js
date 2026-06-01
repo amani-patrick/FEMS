@@ -12,112 +12,96 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
-
-// CORS
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'http://localhost:3001'],
+  origin: process.env.FRONTEND_URL || ['http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
-});
-app.use(limiter);
-
-// Logging
+}));
 app.use(morgan('combined'));
-
 
 // Swagger docs
 try {
   const swaggerDoc = YAML.load(path.join(__dirname, '../../swagger.yaml'));
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc, {
     customCss: '.swagger-ui .topbar { background-color: #0f172a; }',
-    customSiteTitle: 'Manage your fire extinguishers API Docs',
+    customSiteTitle: 'FEMCS API Docs',
   }));
 } catch (e) {
   console.log('Swagger YAML not found, skipping docs');
 }
 
 const AUTH_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:5001';
+const CUSTOMER_URL = process.env.CUSTOMER_SERVICE_URL || 'http://localhost:5002';
+const EXTINGUISHER_URL = process.env.EXTINGUISHER_SERVICE_URL || 'http://localhost:5003';
+const NOTIFICATION_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5004';
+const REPORT_URL = process.env.REPORT_SERVICE_URL || 'http://localhost:5005';
 
-const proxyOptions = (target, pathRewrite) => ({
-  target,
-  changeOrigin: true,
-  pathRewrite,
-  on: {
-    error: (err, req, res) => {
-      console.error(`Proxy error to ${target}:`, err.message);
-      res.status(503).json({ success: false, message: 'Service temporarily unavailable' });
+function makeProxy(target, pathRewrite) {
+  return createProxyMiddleware({
+    target,
+    changeOrigin: true,
+    pathRewrite,
+    timeout: 60000,
+    proxyTimeout: 60000,
+    on: {
+      error: (err, req, res) => {
+        console.error(`Proxy error to ${target}:`, err.message);
+        if (!res.headersSent) {
+          res.status(503).json({ success: false, message: 'Service temporarily unavailable' });
+        }
+      },
     },
-  },
-});
+  });
+}
 
-// Routes
-app.use('/api/auth', createProxyMiddleware({
-  target: AUTH_URL,
-  changeOrigin: true,
-  pathRewrite: { '^/api/auth': '' },
-  timeout: 60000,
-  proxyTimeout: 60000,
-  on: {
-    error: (err, req, res) => {
-      console.error(`Proxy error to ${AUTH_URL}:`, err.message);
-      console.error(`Request path: ${req.path}`);
-      console.error(`Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-      if (!res.headersSent) {
-        res.status(503).json({ success: false, message: 'Service temporarily unavailable' });
-      }
-    },
-    proxyReq: (proxyReq, req, res) => {
-      console.log(`Proxying ${req.method} ${req.path} to ${AUTH_URL}`);
-      console.log(`Original URL: ${req.originalUrl}`);
-      console.log(`Path after rewrite: ${req.path.replace('/api/auth', '')}`);
-    },
-    proxyRes: (proxyRes, req, res) => {
-      console.log(`Response from ${AUTH_URL}: ${proxyRes.statusCode}`);
-    },
-  },
-}));
+// Auth: /api/auth/login  →  /login  (service has no prefix)
+app.use('/api/auth', makeProxy(AUTH_URL, { '^/api/auth': '' }));
+// Customer: /api/customers  →  /  (service mounts routes at /)
+app.use('/api/customers', makeProxy(CUSTOMER_URL, { '^/api/customers': '' }));
 
-// Health check
+// Extinguisher: /api/extinguishers  →  /extinguishers  (service mounts at /extinguishers)
+app.use('/api/extinguishers', makeProxy(EXTINGUISHER_URL, { '^/api': '' }));
+app.use('/api/inspections',   makeProxy(EXTINGUISHER_URL, { '^/api': '' }));
+app.use('/api/maintenance',   makeProxy(EXTINGUISHER_URL, { '^/api': '' }));
+
+// Notification: /api/notifications  →  /  (service mounts at /)
+app.use('/api/notifications', makeProxy(NOTIFICATION_URL, { '^/api/notifications': '' }));
+
+// Report: /api/reports  →  /  (service mounts at /)
+app.use('/api/reports', makeProxy(REPORT_URL, { '^/api/reports': '' }));
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     service: 'api-gateway',
     timestamp: new Date().toISOString(),
-    services: {
-      auth: AUTH_URL,
-    },
+    services: { auth: AUTH_URL, customer: CUSTOMER_URL, extinguisher: EXTINGUISHER_URL, notification: NOTIFICATION_URL, report: REPORT_URL },
   });
 });
 
 app.get('/', (req, res) => {
   res.json({
-    message: 'Fire extinguishers Management System - API Gateway',
+    message: 'Fire Extinguisher Management and Compliance System (FEMCS) - API Gateway',
     version: '1.0.0',
     docs: '/api/docs',
     health: '/health',
   });
 });
 
-// 404
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found` });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 API Gateway running on port ${PORT}`);
+  console.log(`🚀 FEMCS API Gateway running on port ${PORT}`);
   console.log(`📚 Swagger docs: http://localhost:${PORT}/api/docs`);
 });

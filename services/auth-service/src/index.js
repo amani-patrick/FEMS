@@ -18,13 +18,16 @@ app.use('/', authRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'OK', service: 'auth-service' }));
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('Auth Service Error:', err);
   if (err.name === 'ValidationError') {
     return res.status(400).json({ success: false, message: err.message });
   }
-  res.status(500).json({ success: false, message: 'Internal server error', ...(process.env.NODE_ENV === 'development' && { error: err.message }) });
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { error: err.message }),
+  });
 });
 
 app.listen(PORT, () => console.log(`🔐 Auth Service running on port ${PORT}`));

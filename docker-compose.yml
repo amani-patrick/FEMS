@@ -1,64 +1,128 @@
-
 services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: xwz
-      POSTGRES_PASSWORD: xwz_secret
-      POSTGRES_DB: xwz_parking
+      POSTGRES_USER: femcs
+      POSTGRES_PASSWORD: femcs_secret
+      POSTGRES_DB: femcs_db
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
-      - xwz-net
+      - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U femcs -d femcs_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api-gateway:
-    image: ghcr.io/amani-patrick/xwz-parking-api-gateway:latest
+    build: ./api-gateway
     ports:
       - "5000:5000"
     environment:
+      - PORT=5000
       - AUTH_SERVICE_URL=http://auth-service:5001
-      - PARKING_SERVICE_URL=http://parking-service:5002
-      - ENTRY_SERVICE_URL=http://entry-service:5003
-      - REPORT_SERVICE_URL=http://report-service:5004
+      - CUSTOMER_SERVICE_URL=http://customer-service:5002
+      - EXTINGUISHER_SERVICE_URL=http://extinguisher-service:5003
+      - NOTIFICATION_SERVICE_URL=http://notification-service:5004
+      - REPORT_SERVICE_URL=http://report-service:5005
+      - FRONTEND_URL=http://localhost:3000
     depends_on:
       - auth-service
-      - parking-service
-      - entry-service
+      - customer-service
+      - extinguisher-service
+      - notification-service
       - report-service
     networks:
-      - xwz-net
+      - femcs-net
 
   auth-service:
-    image: ghcr.io/amani-patrick/xwz-parking-auth-service:latest
+    build: ./services/auth-service
     ports:
       - "5001:5001"
     environment:
       - PORT=5001
-      - DB_URL=postgresql://xwz:xwz_secret@postgres:5432/xwz_parking
-      - JWT_SECRET=xwz_jwt_super_secret_2024
+      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
       - JWT_EXPIRES_IN=24h
+      - NODE_ENV=production
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
-      - xwz-net
+      - femcs-net
 
-  entry-service:
-    image: ghcr.io/amani-patrick/xwz-parking-entry-service:latest
+  customer-service:
+    build: ./services/entry-service
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - femcs-net
+
+  extinguisher-service:
+    build: ./services/extinguisher-service
     ports:
       - "5003:5003"
     environment:
       - PORT=5003
-      - DB_URL=postgresql://xwz:xwz_secret@postgres:5432/xwz_parking
-      - JWT_SECRET=xwz_jwt_super_secret_2024
+      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
+      - NODE_ENV=production
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
-      - xwz-net
+      - femcs-net
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "5004:5004"
+    environment:
+      - PORT=5004
+      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
+      - NODE_ENV=production
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_SECURE=false
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - EMAIL_FROM=FEMCS System <noreply@femcs.rw>
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - femcs-net
+
+  report-service:
+    build: ./services/report-service
+    ports:
+      - "5005:5005"
+    environment:
+      - PORT=5005
+      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - femcs-net
 
   frontend:
-    image: ghcr.io/amani-patrick/xwz-parking-frontend:latest
+    build: ./frontend
     ports:
       - "3000:3000"
     environment:
@@ -66,11 +130,11 @@ services:
     depends_on:
       - api-gateway
     networks:
-      - xwz-net
+      - femcs-net
 
 volumes:
   pgdata:
 
 networks:
-  project-net:
+  femcs-net:
     driver: bridge

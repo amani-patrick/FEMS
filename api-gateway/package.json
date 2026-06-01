@@ -1,7 +1,7 @@
 {
-  "name": "xwz-api-gateway",
+  "name": "femcs-api-gateway",
   "version": "1.0.0",
-  "description": "XWZ Parking System API Gateway",
+  "description": "FEMCS - API Gateway",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

@@ -1,7 +1,7 @@
 {
-  "name": "xwz-auth-service",
+  "name": "femcs-auth-service",
   "version": "1.0.0",
-  "description": "XWZ Parking - Authentication & User Management Service",
+  "description": "FEMCS - Authentication & User Management Service",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -18,7 +18,8 @@
     "express-rate-limit": "^7.1.5",
     "morgan": "^1.10.0",
     "dotenv": "^16.3.1",
-    "express-async-errors": "^3.1.1"
+    "express-async-errors": "^3.1.1",
+    "nodemailer": "^6.9.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

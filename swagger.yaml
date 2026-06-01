@@ -1,322 +1,406 @@
-# openapi: 3.0.0
-# info:
-#   title: XWZ Parking Management System API
-#   description: |
-#     Microservices-based Car Parking Management System for XWZ Ltd, Kigali Rwanda.
-    
-#     ## Architecture
-#     - **API Gateway** (port 5000) — routes all requests
-#     - **Auth Service** (port 5001) — user registration, login, JWT
-#     - **Entry Service** (port 5003) — car entry/exit, tickets, bills
-    
-#     ## Default Admin
-#     - Email: `admin@xwzparking.rw`
-#     - Password: `Admin@1234`
-#   version: 1.0.0
-#   contact:
-#     name: project name
-#     email: project email 
+openapi: 3.0.0
+info:
+  title: FEMCS API
+  description: Fire Extinguisher Management and Compliance System
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+    description: Local API Gateway
 
-# servers:
-#   - url: http://localhost:5000/api
-#     description: Local API Gateway
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
 
-# components:
-#   securitySchemes:
-#     BearerAuth:
-#       type: http
-#       scheme: bearer
-#       bearerFormat: JWT
-  
-#   schemas:
-#     User:
-#       type: object
-#       properties:
-#         id: { type: string, format: uuid }
-#         firstName: { type: string }
-#         lastName: { type: string }
-#         email: { type: string, format: email }
-#         role: { type: string, enum: [admin, parking_tenant] }
-#         createdAt: { type: string, format: date-time }
-    
-#     Parking:
-#       type: object
-#       properties:
-#         id: { type: string, format: uuid }
-#         code: { type: string, example: KGL001 }
-#         name: { type: string, example: Kigali City Center Parking }
-#         totalSpaces: { type: integer, example: 100 }
-#         availableSpaces: { type: integer, example: 45 }
-#         occupiedSpaces: { type: integer, example: 55 }
-#         occupancyRate: { type: string, example: "55.0" }
-#         location: { type: string, example: "KG 7 Ave, Kigali" }
-#         feePerHour: { type: number, example: 500 }
-#         isActive: { type: boolean }
-#         createdAt: { type: string, format: date-time }
-    
-#     CarEntry:
-#       # type: object
-#       properties:
-#         id: { type: string, format: uuid }
-#         plateNumber: { type: string, example: RAC 001 A }
-#         parkingCode: { type: string, example: KGL001 }
-#         parkingName: { type: string }
-#         entryDatetime: { type: string, format: date-time }
-#         exitDatetime: { type: string, format: date-time, nullable: true }
-#         chargedAmount: { type: number, example: 0 }
-#         ticketNumber: { type: string, example: TKT-20241201120000-1234 }
-#         status: { type: string, enum: [parked, exited] }
-    
-#     Pagination:
-#       type: object
-#       properties:
-#         page: { type: integer }
-#         limit: { type: integer }
-#         total: { type: integer }
-#         totalPages: { type: integer }
-    
-#     Error:
-#       type: object
-#       properties:
-#         success: { type: boolean, example: false }
-#         message: { type: string }
+security:
+  - bearerAuth: []
 
-# security:
-#   - BearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, password]
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                role: { type: string, enum: [admin, technician, inspector, safety_officer] }
+      responses:
+        '201': { description: User registered }
+        '409': { description: Email already registered }
 
-# paths:
-#   /auth/register:
-#     post:
-#       tags: [Authentication]
-#       summary: Register new user
-#       security: []
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               type: object
-#               required: [firstName, lastName, email, password]
-#               properties:
-#                 firstName: { type: string, example: John }
-#                 lastName: { type: string, example: Doe }
-#                 email: { type: string, format: email, example: john@example.com }
-#                 password: { type: string, example: "Pass@1234" }
-#                 role: { type: string, enum: [admin, parking_tenant], default: parking_tenant }
-#       responses:
-#         '201':
-#           description: User registered successfully
-#           content:
-#             application/json:
-#               schema:
-#                 type: object
-#                 properties:
-#                   success: { type: boolean }
-#                   data:
-#                     type: object
-#                     properties:
-#                       user: { $ref: '#/components/schemas/User' }
-#                       token: { type: string }
-#         '400': { description: Validation error }
-#         '409': { description: Email already exists }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200': { description: Login successful, returns JWT token }
+        '401': { description: Invalid credentials }
 
-#   /auth/login:
-#     post:
-#       tags: [Authentication]
-#       summary: Login user
-#       security: []
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               type: object
-#               required: [email, password]
-#               properties:
-#                 email: { type: string, format: email, example: admin@xwzparking.rw }
-#                 password: { type: string, example: "Admin@1234" }
-#       responses:
-#         '200':
-#           description: Login successful
-#           content:
-#             application/json:
-#               schema:
-#                 type: object
-#                 properties:
-#                   success: { type: boolean }
-#                   data:
-#                     type: object
-#                     properties:
-#                       user: { $ref: '#/components/schemas/User' }
-#                       token: { type: string }
-#         '401': { description: Invalid credentials }
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user
+      responses:
+        '200': { description: Current user data }
 
-#   /auth/me:
-#     get:
-#       tags: [Authentication]
-#       summary: Get current user profile
-#       responses:
-#         '200': { description: Current user data }
-#         '401': { description: Unauthorized }
+  /auth/users:
+    get:
+      tags: [Auth]
+      summary: List all users (admin only)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200': { description: List of users }
 
-#   /auth/users:
-#     get:
-#       tags: [Users]
-#       summary: Get all users (Admin only)
-#       parameters:
-#         - in: query
-#           name: page
-#           schema: { type: integer, default: 1 }
-#         - in: query
-#           name: limit
-#           schema: { type: integer, default: 10 }
-#         - in: query
-#           name: search
-#           schema: { type: string }
-#       responses:
-#         '200':
-#           description: List of users
-#           content:
-#             application/json:
-#               schema:
-#                 type: object
-#                 properties:
-#                   success: { type: boolean }
-#                   data:
-#                     type: array
-#                     items: { $ref: '#/components/schemas/User' }
-#                   pagination: { $ref: '#/components/schemas/Pagination' }
+  /customers:
+    get:
+      tags: [Customers]
+      summary: List customers
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200': { description: List of customers }
+    post:
+      tags: [Customers]
+      summary: Create customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName, phone]
+              properties:
+                fullName: { type: string }
+                nationalId: { type: string }
+                phone: { type: string }
+                email: { type: string }
+                address: { type: string }
+                organizationName: { type: string }
+      responses:
+        '201': { description: Customer created }
 
-#   /auth/users/{id}/toggle:
-#     patch:
-#       tags: [Users]
-#       summary: Toggle user active status (Admin only)
-#       parameters:
-#         - in: path
-#           name: id
-#           required: true
-#           schema: { type: string, format: uuid }
-#       responses:
-#         '200': { description: User status toggled }
-#         '404': { description: User not found }
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get customer by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Customer data }
+    put:
+      tags: [Customers]
+      summary: Update customer
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: Customer updated }
+    delete:
+      tags: [Customers]
+      summary: Delete customer (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Customer deleted }
 
-#   /entries:
-#     post:
-#       tags: [Car Entries]
-#       summary: Register car entry
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               type: object
-#               required: [plateNumber, parkingCode]
-#               properties:
-#                 plateNumber: { type: string, example: RAC 001 A }
-#                 parkingCode: { type: string, example: KGL001 }
-#       responses:
-#         '201':
-#           description: Car entry registered with ticket
-#           content:
-#             application/json:
-#               schema:
-#                 type: object
-#                 properties:
-#                   success: { type: boolean }
-#                   data:
-#                     type: object
-#                     properties:
-#                       entry: { $ref: '#/components/schemas/CarEntry' }
-#                       ticket:
-#                         type: object
-#                         properties:
-#                           ticketNumber: { type: string }
-#                           plateNumber: { type: string }
-#                           parkingCode: { type: string }
-#                           parkingName: { type: string }
-#                           entryDatetime: { type: string, format: date-time }
-#                           feePerHour: { type: number }
-#                       remainingSpaces: { type: integer }
-#         '400': { description: Parking full or invalid data }
-#         '404': { description: Parking not found }
-#         '409': { description: Vehicle already parked }
+  /extinguishers:
+    get:
+      tags: [Extinguishers]
+      summary: List extinguishers
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, expired, serviced, decommissioned, pending_inspection] }
+        - in: query
+          name: type
+          schema: { type: string, enum: [CO2, Dry Powder, Foam, Water] }
+        - in: query
+          name: compliance
+          schema: { type: string, enum: [compliant, warning, critical, non_compliant] }
+      responses:
+        '200': { description: List of extinguishers }
+    post:
+      tags: [Extinguishers]
+      summary: Register extinguisher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serialNumber, type, capacityLiters, manufactureDate, purchaseDate, expiryDate, location, customerId]
+              properties:
+                serialNumber: { type: string }
+                type: { type: string, enum: [CO2, Dry Powder, Foam, Water] }
+                capacityLiters: { type: number }
+                manufactureDate: { type: string, format: date }
+                purchaseDate: { type: string, format: date }
+                expiryDate: { type: string, format: date }
+                location: { type: string }
+                customerId: { type: string, format: uuid }
+      responses:
+        '201': { description: Extinguisher registered }
 
-#     get:
-#       tags: [Car Entries]
-#       summary: Get all car entries
-#       parameters:
-#         - in: query
-#           name: page
-#           schema: { type: integer, default: 1 }
-#         - in: query
-#           name: limit
-#           schema: { type: integer, default: 10 }
-#         - in: query
-#           name: search
-#           schema: { type: string }
-#         - in: query
-#           name: status
-#           schema: { type: string, enum: [parked, exited] }
-#         - in: query
-#           name: parkingCode
-#           schema: { type: string }
-#       responses:
-#         '200':
-#           description: List of car entries
-#           content:
-#             application/json:
-#               schema:
-#                 type: object
-#                 properties:
-#                   success: { type: boolean }
-#                   data:
-#                     type: array
-#                     items: { $ref: '#/components/schemas/CarEntry' }
-#                   pagination: { $ref: '#/components/schemas/Pagination' }
+  /extinguishers/stats:
+    get:
+      tags: [Extinguishers]
+      summary: Inventory statistics
+      responses:
+        '200': { description: Inventory stats }
 
-#   /entries/{id}/exit:
-#     patch:
-#       tags: [Car Entries]
-#       summary: Register car exit and generate bill
-#       parameters:
-#         - in: path
-#           name: id
-#           required: true
-#           schema: { type: string, format: uuid }
-#       requestBody:
-#         content:
-#           application/json:
-#             schema:
-#               type: object
-#               properties:
-#                 exitDatetime:
-#                   type: string
-#                   format: date-time
-#                   description: Optional. Defaults to current time if not provided.
-#       responses:
-#         '200':
-#           description: Car exit registered with bill
-#           content:
-#             application/json:
-#               schema:
-#                 type: object
-#                 properties:
-#                   success: { type: boolean }
-#                   data:
-#                     type: object
-#                     properties:
-#                       entry: { $ref: '#/components/schemas/CarEntry' }
-#                       bill:
-#                         type: object
-#                         properties:
-#                           ticketNumber: { type: string }
-#                           plateNumber: { type: string }
-#                           entryDatetime: { type: string, format: date-time }
-#                           exitDatetime: { type: string, format: date-time }
-#                           duration: { type: string, example: "2h 30m" }
-#                           durationHours: { type: number }
-#                           feePerHour: { type: number }
-#                           totalCharged: { type: number }
-#                           currency: { type: string, example: RWF }
-#         '400': { description: Already exited or invalid exit time }
-#         '404': { description: Entry not found }
+  /extinguishers/{id}:
+    get:
+      tags: [Extinguishers]
+      summary: Get extinguisher
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Extinguisher data }
+    put:
+      tags: [Extinguishers]
+      summary: Update extinguisher
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Extinguishers]
+      summary: Remove extinguisher (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Removed }
+
+  /inspections:
+    get:
+      tags: [Inspections]
+      summary: List inspections
+      responses:
+        '200': { description: List of inspections }
+    post:
+      tags: [Inspections]
+      summary: Record inspection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [extinguisherId, inspectorName, inspectionDate, status]
+              properties:
+                extinguisherId: { type: string, format: uuid }
+                inspectorName: { type: string }
+                inspectionDate: { type: string, format: date }
+                findings: { type: string }
+                status: { type: string, enum: [Passed, Requires Service, Failed] }
+                nextInspectionDate: { type: string, format: date }
+      responses:
+        '201': { description: Inspection recorded }
+
+  /maintenance:
+    get:
+      tags: [Maintenance]
+      summary: List maintenance records
+      responses:
+        '200': { description: List of maintenance records }
+    post:
+      tags: [Maintenance]
+      summary: Create maintenance record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [extinguisherId, serviceDate, serviceCompany, technicianName]
+              properties:
+                extinguisherId: { type: string, format: uuid }
+                serviceDate: { type: string, format: date }
+                serviceCompany: { type: string }
+                technicianName: { type: string }
+                nextServiceDate: { type: string, format: date }
+                cost: { type: number }
+                description: { type: string }
+                status: { type: string, enum: [scheduled, in_progress, completed, cancelled] }
+      responses:
+        '201': { description: Maintenance record created }
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Get notifications for current user
+      parameters:
+        - in: query
+          name: unread
+          schema: { type: boolean }
+        - in: query
+          name: type
+          schema: { type: string }
+      responses:
+        '200': { description: Notifications list with unread count }
+
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification as read
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Marked as read }
+
+  /notifications/read-all:
+    patch:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      responses:
+        '200': { description: All marked as read }
+
+  /notifications/escalations:
+    get:
+      tags: [Notifications]
+      summary: List escalations (admin/safety_officer)
+      responses:
+        '200': { description: Escalations list }
+
+  /notifications/trigger-check:
+    post:
+      tags: [Notifications]
+      summary: Manually trigger expiry check (admin only)
+      responses:
+        '200': { description: Check triggered }
+
+  /reports/expired:
+    get:
+      tags: [Reports]
+      summary: Expired extinguishers report
+      parameters:
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, csv] }
+      responses:
+        '200': { description: Report data }
+
+  /reports/expiring-soon:
+    get:
+      tags: [Reports]
+      summary: Expiring soon report
+      parameters:
+        - in: query
+          name: days
+          schema: { type: integer, default: 90 }
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, csv] }
+      responses:
+        '200': { description: Report data }
+
+  /reports/compliance:
+    get:
+      tags: [Reports]
+      summary: Compliance report
+      parameters:
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, csv] }
+      responses:
+        '200': { description: Compliance data }
+
+  /reports/summary:
+    get:
+      tags: [Reports]
+      summary: Dashboard summary statistics
+      responses:
+        '200': { description: Summary stats }
+
+  /reports/audit:
+    get:
+      tags: [Reports]
+      summary: Audit trail (admin only)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: action
+          schema: { type: string }
+      responses:
+        '200': { description: Audit logs }

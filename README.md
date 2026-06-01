@@ -1,150 +1,105 @@
-# XWZ Parking Management System
-### Microservices-based Car Parking Management | Kigali, Rwanda
+# 🧯 FEMCS — Fire Extinguisher Management and Compliance System
+
+A microservices-based system to track fire extinguishers, monitor expiration and maintenance dates, send automated reminders, schedule inspections, and ensure compliance with fire safety regulations.
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   FRONTEND (React)               │
-│                  http://localhost:3000           │
-└────────────────────────┬────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────┐
-│              API GATEWAY  :5000                  │
-│         (Routing, CORS, Rate Limiting)           │
-└──┬─────────────┬──────────────┬──────────┬──────┘
-   │             │              │          │
-   ▼             ▼              ▼          ▼
-:5001         :5002           :5003      :5004
-Auth            
-Service       Service         Service    Service
-   │             │              │          │
-   └─────────────┴──────────────┴──────────┘
-                         │
-              ┌──────────▼──────────┐
-              │   PostgreSQL :5432xwz_parking 
-              └─────────────────────┘
+┌─────────────┐     ┌──────────────────────────────────────────────────────┐
+│   Frontend  │────▶│                   API Gateway :5000                  │
+│  React :3000│     └──────┬──────────┬──────────┬──────────┬──────────────┘
+└─────────────┘            │          │          │          │
+                    :5001  │   :5002  │   :5003  │   :5004  │  :5005
+              auth-service │ customer │extinguish│notificat.│ report
+                           │ -service │ -service │ -service │ -service
+                           └──────────┴──────────┴──────────┴──────────────┘
+                                              │
+                                       PostgreSQL :5432
 ```
 
-## 📦 Services
+## Services
 
-| Service | Port | Responsibility |
-|---------|------|----------------|
-| API Gateway | 5000 | Request routing, CORS, Rate limiting |
-| Auth Service | 5001 | User registration, login, JWT tokens |
-| Entry Service | 5003 | Car entry/exit, tickets, bills |
+| Service | Port | Description |
+|---------|------|-------------|
+| `api-gateway` | 5000 | Reverse proxy, rate limiting, Swagger docs |
+| `auth-service` | 5001 | Authentication, JWT, user management |
+| `entry-service` (customer) | 5002 | Customer registration and management |
+| `extinguisher-service` | 5003 | Extinguisher CRUD, inspections, maintenance |
+| `notification-service` | 5004 | In-app + email notifications, escalations, cron scheduler |
+| `report-service` | 5005 | Reports (expired, compliance, audit) with CSV export |
+| `frontend` | 3000 | React dashboard |
 
-## 🚀 Quick Start
+## Quick Start
 
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 15+
-- Docker & Docker Compose (recommended)
+### With Docker Compose
 
-
-#### 1. Setup PostgreSQL
 ```bash
-psql -U postgres
-CREATE DATABASE xwz_parking;
-\q
+# Copy and configure environment
+cp api-gateway/.env.example api-gateway/.env
+cp services/auth-service/.env.example services/auth-service/.env
+cp services/entry-service/.env.example services/entry-service/.env
+cp services/extinguisher-service/.env.example services/extinguisher-service/.env
+cp services/notification-service/.env.example services/notification-service/.env
+cp services/report-service/.env.example services/report-service/.env
 
-psql -U postgres -d <project_name> -f schema.sql
+# Start everything
+docker-compose up --build
 ```
 
-#### 2. Start API Gateway
+### Manual (Development)
+
 ```bash
-cd api-gateway
-npm install
-cp .env.example .env  
-npm start
+# Start each service
+cd services/auth-service && npm install && npm run dev
+cd services/entry-service && npm install && npm run dev
+cd services/extinguisher-service && npm install && npm run dev
+cd services/notification-service && npm install && npm run dev
+cd services/report-service && npm install && npm run dev
+cd api-gateway && npm install && npm run dev
+cd frontend && npm install && npm start
 ```
 
-#### 3. Start Auth Service
+### Database
+
 ```bash
-cd services/auth-service
-npm install
-npm start
+psql -U femcs -d femcs_db -f schema.sql
 ```
 
-#### . Start Entry Service
-```bash
-cd services/entry-service
-npm install
-npm start
+## Default Login
+
+- **Email:** admin@femcs.rw
+- **Password:** Admin@1234
+
+## API Docs
+
+Visit `http://localhost:5000/api/docs` after starting the gateway.
+
+## Features
+
+- ✅ Customer management (FR1)
+- ✅ Fire extinguisher registration (FR2)
+- ✅ Inventory dashboard with stats (FR3)
+- ✅ Automatic expiry monitoring — 90/60/30/7 day alerts (FR4)
+- ✅ Inspection management with pass/fail/requires service (FR5)
+- ✅ Maintenance scheduling and tracking (FR6)
+- ✅ In-app + email notifications (FR7)
+- ✅ 5-stage escalation system (FR8)
+- ✅ Reports: expired, expiring, customers, inspections, maintenance, compliance — CSV export (FR9)
+- ✅ Full audit trail (FR10)
+- ✅ Roles: admin, technician, inspector, safety_officer
+- ✅ Responsive React frontend with dark theme
+
+## Email Configuration
+
+Set SMTP credentials in `services/notification-service/.env`:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
 ```
 
-#### . Start Frontend
-```bash
-cd frontend
-npm install
-npm start
-```
-
----
-
-
-
-## 📚 API Documentation
-
-Swagger UI available at: **http://localhost:5000/api/docs**
-
----
-
-## 🔐 Authentication
-
-All API endpoints (except `/auth/register` and `/auth/login`) require a JWT token:
-
-```
-Authorization: Bearer <jwt_token>
-```
-
----
-
-## 👥 User Roles
-
----
-
-## 📋 Key Features
-
----
-
-## 🛡️ Security
-
-- Helmet.js headers on all services
-- CORS configured (whitelist-based)
-- Rate limiting: 200 requests/15min per IP
-- Input validation with Joi (server-side)
-- Client-side validation on all forms
-- SQL injection prevention via parameterized queries
-- JWT token expiry enforcement
-
----
-
-## 🗄️ Database Schema
-
-
----
-
-## 📁 Project Structure
-
-```
-xwz-parking/
-├── docker-compose.yml
-├── schema.sql
-├── swagger.yaml
-├── README.md
-├── api-gateway/
-│   └── src/index.js
-├── services/
-│   ├── auth-service/
-│   ├── entry-service/
-└── frontend/
-    └── src/
-        ├── pages/
-        ├── components/
-        ├── services/
-        └── context/
-```
-
+If credentials are not set, email sending is skipped gracefully — in-app notifications still work.

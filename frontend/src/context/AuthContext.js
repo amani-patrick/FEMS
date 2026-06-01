@@ -8,23 +8,40 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-//set user states and loading states 
+    const token = localStorage.getItem('femcs_token');
+    const stored = localStorage.getItem('femcs_user');
+    if (token && stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem('femcs_token');
+        localStorage.removeItem('femcs_user');
+      }
+    }
+    setLoading(false);
   }, []);
 
   const login = (userData, token) => {
-    localStorage.setItem('tken', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('femcs_token', token);
+    localStorage.setItem('femcs_user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('femcs_token');
+    localStorage.removeItem('femcs_user');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin: user?.role === 'admin' }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      logout,
+      isAdmin: user?.role === 'admin',
+      isSafetyOfficer: user?.role === 'safety_officer',
+    }}>
       {children}
     </AuthContext.Provider>
   );
