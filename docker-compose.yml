@@ -1,6 +1,9 @@
 services:
+
+  # ── Database ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: femcs
       POSTGRES_PASSWORD: femcs_secret
@@ -9,7 +12,8 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./migrate.sql:/docker-entrypoint-initdb.d/02-migrate.sql
     networks:
       - femcs-net
     healthcheck:
@@ -17,120 +21,217 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
+  # ── API Gateway ───────────────────────────────────────────────────────────
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    image: femcs-api-gateway:latest
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
-      - PORT=5000
-      - AUTH_SERVICE_URL=http://auth-service:5001
-      - CUSTOMER_SERVICE_URL=http://customer-service:5002
-      - EXTINGUISHER_SERVICE_URL=http://extinguisher-service:5003
-      - NOTIFICATION_SERVICE_URL=http://notification-service:5004
-      - REPORT_SERVICE_URL=http://report-service:5005
-      - FRONTEND_URL=http://localhost:3000
+      PORT: 5000
+      AUTH_SERVICE_URL: http://auth-service:5001
+      CUSTOMER_SERVICE_URL: http://customer-service:5002
+      EXTINGUISHER_SERVICE_URL: http://extinguisher-service:5003
+      NOTIFICATION_SERVICE_URL: http://notification-service:5004
+      REPORT_SERVICE_URL: http://report-service:5005
+      FRONTEND_URL: http://localhost:3000
+      NODE_ENV: production
     depends_on:
-      - auth-service
-      - customer-service
-      - extinguisher-service
-      - notification-service
-      - report-service
+      auth-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+      extinguisher-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      report-service:
+        condition: service_healthy
     networks:
       - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
+  # ── Auth Service ──────────────────────────────────────────────────────────
   auth-service:
-    build: ./services/auth-service
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    image: femcs-auth-service:latest
+    restart: unless-stopped
     ports:
       - "5001:5001"
     environment:
-      - PORT=5001
-      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
-      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
-      - JWT_EXPIRES_IN=24h
-      - NODE_ENV=production
+      PORT: 5001
+      DB_URL: postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      JWT_SECRET: ${JWT_SECRET:-femcs_jwt_super_secret_change_in_production}
+      JWT_EXPIRES_IN: 24h
+      NODE_ENV: production
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-FEMCS System <noreply@femcs.rw>}
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
+  # ── Customer Service (entry-service folder) ───────────────────────────────
   customer-service:
-    build: ./services/entry-service
+    build:
+      context: ./services/entry-service
+      dockerfile: Dockerfile
+    image: femcs-customer-service:latest
+    restart: unless-stopped
     ports:
       - "5002:5002"
     environment:
-      - PORT=5002
-      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
-      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
-      - NODE_ENV=production
+      PORT: 5002
+      DB_URL: postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      JWT_SECRET: ${JWT_SECRET:-femcs_jwt_super_secret_change_in_production}
+      NODE_ENV: production
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
+  # ── Extinguisher Service ──────────────────────────────────────────────────
   extinguisher-service:
-    build: ./services/extinguisher-service
+    build:
+      context: ./services/extinguisher-service
+      dockerfile: Dockerfile
+    image: femcs-extinguisher-service:latest
+    restart: unless-stopped
     ports:
       - "5003:5003"
     environment:
-      - PORT=5003
-      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
-      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
-      - NODE_ENV=production
+      PORT: 5003
+      DB_URL: postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      JWT_SECRET: ${JWT_SECRET:-femcs_jwt_super_secret_change_in_production}
+      NODE_ENV: production
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-FEMCS System <noreply@femcs.rw>}
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5003/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
+  # ── Notification Service ──────────────────────────────────────────────────
   notification-service:
-    build: ./services/notification-service
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    image: femcs-notification-service:latest
+    restart: unless-stopped
     ports:
       - "5004:5004"
     environment:
-      - PORT=5004
-      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
-      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
-      - NODE_ENV=production
-      - SMTP_HOST=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_SECURE=false
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - EMAIL_FROM=FEMCS System <noreply@femcs.rw>
+      PORT: 5004
+      DB_URL: postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      JWT_SECRET: ${JWT_SECRET:-femcs_jwt_super_secret_change_in_production}
+      NODE_ENV: production
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-FEMCS System <noreply@femcs.rw>}
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5004/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
+  # ── Report Service ────────────────────────────────────────────────────────
   report-service:
-    build: ./services/report-service
+    build:
+      context: ./services/report-service
+      dockerfile: Dockerfile
+    image: femcs-report-service:latest
+    restart: unless-stopped
     ports:
       - "5005:5005"
     environment:
-      - PORT=5005
-      - DB_URL=postgresql://femcs:femcs_secret@postgres:5432/femcs_db
-      - JWT_SECRET=femcs_jwt_super_secret_change_in_production
-      - NODE_ENV=production
+      PORT: 5005
+      DB_URL: postgresql://femcs:femcs_secret@postgres:5432/femcs_db
+      JWT_SECRET: ${JWT_SECRET:-femcs_jwt_super_secret_change_in_production}
+      NODE_ENV: production
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5005/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
+  # ── Frontend ──────────────────────────────────────────────────────────────
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:5000/api
+    image: femcs-frontend:latest
+    restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
     networks:
       - femcs-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 volumes:
   pgdata:

@@ -158,7 +158,7 @@ router.post('/login', async (req, res) => {
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) {
     return res.status(401).json({ success: false, message: 'Invalid email or password' });
-  }
+  }sendEmail
 
   await db.query(
     `INSERT INTO audit_logs (user_id, user_email, action, entity_type, ip_address)

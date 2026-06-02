@@ -1,19 +1,35 @@
-# Environment Variables
+# ── Environment variables — never commit these ────────────────────────────
 .env
 **/.env
+services/**/.env
 api-gateway/.env
 frontend/.env
-services/auth-service/.env
 
+# Keep example files in source control
+!.env.example
+!**/.env.example
 
-# Node.js
+# ── Node.js ───────────────────────────────────────────────────────────────
 node_modules/
-npm-debug.log
-yarn-error.log
+**/node_modules/
+npm-debug.log*
+yarn-error.log*
+yarn-debug.log*
+.pnpm-debug.log*
 
-# Build Outputs
+# ── Build outputs ─────────────────────────────────────────────────────────
 build/
 dist/
+frontend/build/
 
-# Keep example env files in source control
-!.env.example
+# ── OS / Editor ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+*.swp
+*.swo
+
+# ── Docker ────────────────────────────────────────────────────────────────
+# keep docker-compose.yml and Dockerfiles in source control
+# ignore override files with local secrets
+docker-compose.override.yml

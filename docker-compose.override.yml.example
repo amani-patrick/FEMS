@@ -1,0 +1,26 @@
+# Copy this to docker-compose.override.yml and fill in your values.
+# Docker Compose automatically merges this with docker-compose.yml.
+# This file is gitignored — safe to put real secrets here.
+
+services:
+  auth-service:
+    environment:
+      SMTP_USER: your_real_email@gmail.com
+      SMTP_PASS: your_real_app_password
+      JWT_SECRET: your_long_random_secret_here
+
+  extinguisher-service:
+    environment:
+      SMTP_USER: your_real_email@gmail.com
+      SMTP_PASS: your_real_app_password
+
+  notification-service:
+    environment:
+      SMTP_USER: your_real_email@gmail.com
+      SMTP_PASS: your_real_app_password
+
+  frontend:
+    build:
+      args:
+        # Point to your deployed gateway if testing against a remote API
+        REACT_APP_API_URL: http://localhost:5000/api
